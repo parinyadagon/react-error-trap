@@ -3,6 +3,7 @@ import type { ErrorInfo } from "react";
 import type { ErrorBoundaryProps, FallbackProps } from "../types";
 import { ErrorFallback } from "../components/ErrorFallback";
 import { useErrorBoundaryConfig } from "../context/shared";
+import { ErrorBoundaryInternalContext } from "../context/internal";
 import { getErrorMessage } from "../utils/errorMapping";
 
 interface State {
@@ -158,5 +159,24 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
     },
   };
 
-  return <ErrorBoundaryInner {...mergedProps} />;
+  const triggerError = (error: Error) => {
+    const message = getErrorMessage(error, mergedProps.errorMessages);
+    if (mergedProps.mode === "toast" && mergedProps.onShowToast) {
+      mergedProps.onShowToast(message, error, () => {});
+    } else if (mergedProps.mode === "popup" && mergedProps.onShowPopup) {
+      mergedProps.onShowPopup(message, error, () => {});
+    }
+  };
+
+  return (
+    <ErrorBoundaryInternalContext.Provider
+      value={{
+        mode: mergedProps.mode || "full-page",
+        hasToastHandler: !!mergedProps.onShowToast,
+        hasPopupHandler: !!mergedProps.onShowPopup,
+        triggerError,
+      }}>
+      <ErrorBoundaryInner {...mergedProps} />
+    </ErrorBoundaryInternalContext.Provider>
+  );
 };
